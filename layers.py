@@ -18,12 +18,16 @@ args = parser.parse_args()
 data = {}
 
 for input_filename in args.file:
-    if input_filename.startswith(args.base):
-        relative_filename = input_filename[len(args.base):]
+    if not input_filename.startswith(args.base):
+        sys.stderr.write(
+            '%s does not start with %s' % (input_filename, args.base)
+        )
+
+    relative_filename = input_filename[len(args.base):].lstrip('/')
     dirname, filename = os.path.split(relative_filename)
 
     basename, extension = os.path.splitext(filename)
-    output_filename = os.path.join(args.dir, filename)
+    output_filename = os.path.join(args.dir, relative_filename)
 
     image = Image.open(input_filename)
     bands = image.getbands()
