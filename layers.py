@@ -26,7 +26,17 @@ for input_filename in args.file:
     output_filename = os.path.join(args.dir, filename)
 
     image = Image.open(input_filename)
-    bounds = image.getbbox()
+    bands = image.getbands()
+    if bands[-1] != 'A':
+        sys.stderr.write(
+            'Warning: Image without alpha channel: %s %s\n' %
+            (input_filename, bands)
+        )
+        alpha_channel = image.convert('RGBA').split()[-1]
+    else:
+        alpha_channel = image.split()[-1]
+
+    bounds = alpha_channel.getbbox()
     cropped = image.crop(bounds)
     cropped.save(output_filename)
 
