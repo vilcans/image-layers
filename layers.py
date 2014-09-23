@@ -18,13 +18,15 @@ parser.add_argument(
 parser.add_argument('file', nargs='+', help='Input image files')
 args = parser.parse_args()
 
-data = {}
+image_list = []
+image_by_id = {}
 
 for input_filename in args.file:
     if not input_filename.startswith(args.base):
         sys.stderr.write(
             '%s does not start with %s' % (input_filename, args.base)
         )
+        sys.exit(1)
 
     relative_filename = input_filename[len(args.base):].lstrip('/')
     dirname, filename = os.path.split(relative_filename)
@@ -45,28 +47,37 @@ for input_filename in args.file:
 
     bounds = alpha_channel.getbbox()
     cropped = image.crop(bounds)
+    target_dir = os.path.join(args.dir, dirname)
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
     cropped.save(output_filename)
 
-    d = data
-    if dirname:
-        for subdir in dirname.split('/'):
-            d = d.setdefault(subdir, {})
-
-    d[basename] = {
-        'url': output_filename,
+    id = os.path.splitext(relative_filename)[0]
+    data = {
+        'id': id,
+        'src': output_filename,
         'x': bounds[0],
         'y': bounds[1],
         'width': bounds[2] - bounds[0],
         'height': bounds[3] - bounds[1],
     }
+    if id in image_by_id:
+        sys.stderr.write(
+            'Duplicate ID: %s (%s and %s)' %
+            (id, image_by_id[id]['src'], data['src'])
+        )
+        sys.exit(1)
+
+    image_list.append(data)
+    image_by_id[id] = data
 
 if args.jsonp:
     sys.stdout.write(args.jsonp)
     sys.stdout.write('(')
-    json.dump(data, sys.stdout, indent=2)
+    json.dump(image_list, sys.stdout, indent=2)
     sys.stdout.write(');')
 else:
-    json.dump(data, sys.stdout, indent=2)
+    json.dump(image_list, sys.stdout, indent=2)
 
 # Recommended commands after this:
 # find -name '*.png' | xargs optipng -o7
