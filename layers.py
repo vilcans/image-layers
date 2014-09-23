@@ -12,6 +12,9 @@ parser.add_argument(
     help='Prefix to remove from input file names (include slash)'
 )
 parser.add_argument('--dir', default='images', help='Output directory')
+parser.add_argument(
+    '--jsonp', help='Output JSONP, using the specified function name'
+)
 parser.add_argument('file', nargs='+', help='Input image files')
 args = parser.parse_args()
 
@@ -57,7 +60,13 @@ for input_filename in args.file:
         'height': bounds[3] - bounds[1],
     }
 
-json.dump(data, sys.stdout, indent=2)
+if args.jsonp:
+    sys.stdout.write(args.jsonp)
+    sys.stdout.write('(')
+    json.dump(data, sys.stdout, indent=2)
+    sys.stdout.write(');')
+else:
+    json.dump(data, sys.stdout, indent=2)
 
 # Recommended commands after this:
 # find -name '*.png' | xargs optipng -o7
