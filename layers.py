@@ -21,10 +21,11 @@ args = parser.parse_args()
 image_list = []
 image_by_id = {}
 
-for input_filename in args.file:
+
+def process_file(input_filename):
     if not input_filename.startswith(args.base):
         sys.stderr.write(
-            '%s does not start with %s' % (input_filename, args.base)
+            '%s does not start with %s\n' % (input_filename, args.base)
         )
         sys.exit(1)
 
@@ -33,6 +34,11 @@ for input_filename in args.file:
 
     basename, extension = os.path.splitext(filename)
     output_filename = os.path.join(args.dir, relative_filename)
+    config_filename = os.path.splitext(input_filename)[0] + '.json'
+    if os.path.exists(config_filename):
+        config = json.load(open(config_filename))
+    else:
+        config = {}
 
     image = Image.open(input_filename)
     bands = image.getbands()
@@ -45,19 +51,22 @@ for input_filename in args.file:
     else:
         alpha_channel = image.split()[-1]
 
-    bounds = alpha_channel.getbbox()
-    cropped = image.crop(bounds)
+    if config.get('autocrop', True):
+        bounds = alpha_channel.getbbox()
+        image = image.crop(bounds)
+    else:
+        bounds = (0, 0) + image.size
     target_dir = os.path.join(args.dir, dirname)
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
-    cropped.save(output_filename)
+    image.save(output_filename)
 
     id = os.path.splitext(relative_filename)[0]
     data = {
         'id': id,
         'src': output_filename,
-        'x': bounds[0],
-        'y': bounds[1],
+        'x': bounds[0] + config.get('x', 0),
+        'y': bounds[1] + config.get('y', 0),
         'width': bounds[2] - bounds[0],
         'height': bounds[3] - bounds[1],
     }
@@ -71,6 +80,10 @@ for input_filename in args.file:
     image_list.append(data)
     image_by_id[id] = data
 
+
+for input_filename in args.file:
+    process_file(input_filename)
+
 if args.jsonp:
     sys.stdout.write(args.jsonp)
     sys.stdout.write('(')
@@ -78,7 +91,6 @@ if args.jsonp:
     sys.stdout.write(');')
 else:
     json.dump(image_list, sys.stdout, indent=2)
-
 # Recommended commands after this:
 # find -name '*.png' | xargs optipng -o7
 # find -name '*.png' | xargs advdef -z4
