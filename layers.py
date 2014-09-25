@@ -13,6 +13,26 @@ parser.add_argument(
 )
 parser.add_argument('--dir', default='images', help='Output directory')
 parser.add_argument(
+    '--crop-top', type=int, default=0,
+    help='Remove this many pixels from the top of all images'
+)
+parser.add_argument(
+    '--crop-bottom', type=int, default=0,
+    help='Remove this many pixels from the bottom of all images'
+)
+parser.add_argument(
+    '--crop-left', type=int, default=0,
+    help='Remove this many pixels from the left side of all images'
+)
+parser.add_argument(
+    '--crop-right', type=int, default=0,
+    help='Remove this many pixels from the right side of all images'
+)
+parser.add_argument(
+    '--scale', type=float, default=1,
+    help='Scaling factor, e.g. 0.5'
+)
+parser.add_argument(
     '--jsonp', help='Output JSONP, using the specified function name'
 )
 parser.add_argument('file', nargs='+', help='Input image files')
@@ -20,6 +40,16 @@ args = parser.parse_args()
 
 image_list = []
 image_by_id = {}
+
+cropping = any(
+    (args.crop_top, args.crop_bottom, args.crop_left, args.crop_right)
+)
+
+
+def scale(value):
+    if args.scale is None:
+        return value
+    return int(value * args.scale + .5)
 
 
 def process_file(input_filename):
@@ -41,6 +71,11 @@ def process_file(input_filename):
         config = {}
 
     image = Image.open(input_filename)
+    if cropping:
+        image = image.crop((
+            args.crop_left, args.crop_top,
+            image.size[0] - args.crop_left, image.size[1] - args.crop_bottom
+        ))
     bands = image.getbands()
     if bands[-1] != 'A':
         sys.stderr.write(
@@ -59,16 +94,19 @@ def process_file(input_filename):
     target_dir = os.path.join(args.dir, dirname)
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
+    if args.scale is not None:
+        image = image.resize(tuple(scale(s) for s in image.size))
+
     image.save(output_filename)
 
     id = os.path.splitext(relative_filename)[0]
     data = {
         'id': id,
         'src': output_filename,
-        'x': bounds[0] + config.get('x', 0),
-        'y': bounds[1] + config.get('y', 0),
-        'width': bounds[2] - bounds[0],
-        'height': bounds[3] - bounds[1],
+        'x': scale(bounds[0] + config.get('x', 0)),
+        'y': scale(bounds[1] + config.get('y', 0)),
+        'width': scale(bounds[2] - bounds[0]),
+        'height': scale(bounds[3] - bounds[1]),
     }
     if id in image_by_id:
         sys.stderr.write(
