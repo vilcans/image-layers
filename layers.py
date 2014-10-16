@@ -4,7 +4,7 @@ import json
 import sys
 import os.path
 import argparse
-from PIL import Image
+from PIL import Image, ImageChops
 
 parser = argparse.ArgumentParser(description='Crop and position images')
 parser.add_argument(
@@ -52,6 +52,15 @@ def scale(value):
     return int(value * args.scale + .5)
 
 
+def images_are_equal(image1, image2):
+    # From http://effbot.org/zone/pil-comparing-images.htm#exact
+    if image1.size != image2.size:
+        return False
+    image1 = image1.convert('RGBA')
+    image2 = image1.convert('RGBA')
+    return ImageChops.difference(image1, image2).getbbox() is None
+
+
 def process_file(input_filename):
     if not input_filename.startswith(args.base):
         sys.stderr.write(
@@ -97,7 +106,16 @@ def process_file(input_filename):
     if args.scale is not None:
         image = image.resize(tuple(scale(s) for s in image.size))
 
-    image.save(output_filename)
+    if (
+        os.path.exists(output_filename) and
+        images_are_equal(image, Image.open(output_filename))
+    ):
+        sys.stderr.write(
+            'Not overwriting pixel-identical image %s\n' %
+            output_filename
+        )
+    else:
+        image.save(output_filename)
 
     id = os.path.splitext(relative_filename)[0]
     data = {
