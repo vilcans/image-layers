@@ -57,7 +57,7 @@ def images_are_equal(image1, image2):
     if image1.size != image2.size:
         return False
     image1 = image1.convert('RGBA')
-    image2 = image1.convert('RGBA')
+    image2 = image2.convert('RGBA')
     return ImageChops.difference(image1, image2).getbbox() is None
 
 
