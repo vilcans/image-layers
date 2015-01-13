@@ -104,7 +104,10 @@ def process_file(input_filename):
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
     if args.scale is not None:
-        image = image.resize(tuple(scale(s) for s in image.size), Image.ANTIALIAS)
+        image = image.convert('RGBA').resize(
+            tuple(scale(s) for s in image.size),
+            Image.ANTIALIAS
+        )
 
     if (
         os.path.exists(output_filename) and
