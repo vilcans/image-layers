@@ -118,6 +118,10 @@ def process_file(input_filename):
             output_filename
         )
     else:
+        sys.stderr.write(
+            'Writing image %s\n' %
+            output_filename
+        )
         image.save(output_filename)
 
     id = os.path.splitext(relative_filename)[0]
